@@ -1,8 +1,9 @@
+from scapy.all import Ether, ARP, srp, send
 import os, sys
 import re
 import termcolor
 
-def am_i_poisoned():
+def am_i_poisoned_offline():
 
     current_os = sys.platform
 
@@ -45,6 +46,25 @@ def am_i_poisoned():
         termcolor.cprint("[!] You're currently being attacked as we found the same MAC address {} twice!!".format(duplicate_address), "red")
     else:
         termcolor.cprint("[*] Everything seems fine!", "green")
+    
+def am_i_poisoned_with_arp_scan(ip):
+    ip_addresses = []
+    mac_addresses = []
+    arp_table = {}
 
+    request = Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=ip)
+    ans, _ = srp(request, timeout=2, retry=1, verbose=0)
+    for _, received in ans:
+        ip_addresses.append(received.psrc)
+        mac_addresses.append(received.hwsrc)
+
+    arp_table = dict(zip(ip_addresses, mac_addresses))
+    
+    if len(arp_table.values()) == len(set(arp_table.values())):
+        termcolor.cprint("[*] Everything seems fine!", "green")
+    else:
+        termcolor.cprint("[!] You're currently being attacked as we found the same MAC address twice!!", "red")
+    
 if __name__ == "__main__":
-    am_i_poisoned()
+    am_i_poisoned_offline()
+    am_i_poisoned_with_arp_scan(sys.argv[1])
