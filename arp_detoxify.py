@@ -3,22 +3,28 @@ import os, sys
 import re
 import termcolor
 
-def am_i_poisoned():
+arp_table = {}
+duplicate_address = ""
+is_attacked = False
 
-    current_os = sys.platform
+def am_i_poisoned(os):  # sourcery skip: remove-redundant-if
 
-    if 'linux' in current_os:
+    global arp_table
+    global duplicate_address
+    global is_attacked
+
+    if 'linux' in os:
         arp_file = "/proc/net/arp"
         with open(arp_file, 'r') as f:
             arp_table = f.read()
 
-        regex_ip = "[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}"
+        regex_ip = r"\b[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}\b"
         regex_mac = "[a-fA-F,0-9]{2}:[a-fA-F,0-9]{2}:[a-fA-F,0-9]{2}:[a-fA-F,0-9]{2}:[a-fA-F,0-9]{2}:[a-fA-F,0-9]{2}"
 
         ip_address = re.findall(regex_ip, arp_table)
         mac_address = re.findall(regex_mac, arp_table)
 
-    if 'win' in current_os:
+    elif 'win' in os:
         ans_cmd = os.popen('cmd /c "arp -a"').read().split("\n")
 
         parsed_ans = []
@@ -34,9 +40,8 @@ def am_i_poisoned():
             ip_address.append(line[0])
             mac_address.append(line[1])
 
-        arp_table = dict(zip(mac_address, ip_address))
+    arp_table = dict(zip(ip_address, mac_address))
     
-    is_attacked = False
     for element in mac_address:
         if mac_address.count(element) > 1:
             duplicate_address = element
@@ -46,6 +51,36 @@ def am_i_poisoned():
         termcolor.cprint("[!] You're currently being attacked as we found the same MAC address {} twice!!".format(duplicate_address), "red")
     else:
         termcolor.cprint("[*] Everything seems fine!", "green")
+
+
+def who_is_attacker(os):  # sourcery skip: last-if-guard, remove-pass-elif
+
+    if "linux" in os:
+        route_file = "/proc/net/route"
+        with open(route_file, "r") as f:
+            route_table = str(f.read())
+        
+        hex_ip = re.findall("[A-F0-9]{8}", route_table)
+        
+        if hex_ip[0] == "00000000":
+            hex_ip_list = re.findall("[A-F0-9]{2}", hex_ip[1])[::-1]
+        
+        ip_list = [str(int(hexa, 16)) for hexa in hex_ip_list]
+        gw_ip = ".".join(ip_list)
+    
+    elif "win" in os:
+        print("Currently WIP")
+        sys.exit()
+    
+    if is_attacked:
+        print(f"[*] Your gateway is {gw_ip}")
+        for ip, mac in arp_table.items():
+            if mac == duplicate_address and ip != gw_ip:
+                termcolor.cprint(f"[!] Your attacker is {ip}", "red")
+
     
 if __name__ == "__main__":
-    am_i_poisoned()
+    current_os = sys.platform
+
+    am_i_poisoned(current_os)
+    who_is_attacker(current_os)
