@@ -72,15 +72,16 @@ def who_is_attacker(os):  # sourcery skip: last-if-guard, remove-pass-elif
         print("Currently WIP")
         sys.exit()
     
-    if is_attacked:
-        print(f"[*] Your gateway is {gw_ip}")
-        for ip, mac in arp_table.items():
-            if mac == duplicate_address and ip != gw_ip:
-                termcolor.cprint(f"[!] Your attacker is {ip}", "red")
+    print(f"[*] Your gateway is {gw_ip}")
+    for ip, mac in arp_table.items():
+        if mac == duplicate_address and ip != gw_ip:
+            termcolor.cprint(f"[!] Your attacker is {ip}", "red")
 
     
 if __name__ == "__main__":
     current_os = sys.platform
 
     am_i_poisoned(current_os)
-    who_is_attacker(current_os)
+    
+    if is_attacked:
+        who_is_attacker(current_os)
