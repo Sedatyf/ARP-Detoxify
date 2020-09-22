@@ -7,13 +7,13 @@ arp_table = {}
 duplicate_address = ""
 is_attacked = False
 
-def am_i_poisoned(os):  # sourcery skip: remove-redundant-if
+def am_i_poisoned(current_os):  # sourcery skip: remove-redundant-if
 
     global arp_table
     global duplicate_address
     global is_attacked
 
-    if 'linux' in os:
+    if 'linux' in current_os:
         arp_file = "/proc/net/arp"
         with open(arp_file, 'r') as f:
             arp_table = f.read()
@@ -24,7 +24,7 @@ def am_i_poisoned(os):  # sourcery skip: remove-redundant-if
         ip_address = re.findall(regex_ip, arp_table)
         mac_address = re.findall(regex_mac, arp_table)
 
-    elif 'win' in os:
+    elif 'win' in current_os:
         ans_cmd = os.popen('cmd /c "arp -a"').read().split("\n")
 
         parsed_ans = []
@@ -33,7 +33,7 @@ def am_i_poisoned(os):  # sourcery skip: remove-redundant-if
         arp_table = {}
 
         for _, line in enumerate(ans_cmd):
-            if 'dynamique' or 'dynamic' in line:
+            if line.find("dynamic") != -1 or line.find("dynamique") != -1:
                 parsed_ans.append(line.split())
 
         for line in parsed_ans:
@@ -53,9 +53,9 @@ def am_i_poisoned(os):  # sourcery skip: remove-redundant-if
         termcolor.cprint("[*] Everything seems fine!", "green")
 
 
-def who_is_attacker(os):  # sourcery skip: last-if-guard, remove-pass-elif
+def who_is_attacker(current_os):  # sourcery skip: last-if-guard, remove-pass-elif
 
-    if "linux" in os:
+    if "linux" in current_os:
         route_file = "/proc/net/route"
         with open(route_file, "r") as f:
             route_table = str(f.read())
@@ -68,9 +68,20 @@ def who_is_attacker(os):  # sourcery skip: last-if-guard, remove-pass-elif
         ip_list = [str(int(hexa, 16)) for hexa in hex_ip_list]
         gw_ip = ".".join(ip_list)
     
-    elif "win" in os:
-        print("Currently WIP")
-        sys.exit()
+    elif "win" in current_os:
+        dflt_gw = []
+
+        ans_cmd = os.popen('cmd /c "ipconfig"').read().split("\n")
+
+        for _, line in enumerate(ans_cmd):
+            if line.startswith("   Default Gateway") or line.startswith("   Passerelle par défaut"):
+                dflt_gw.append(line)
+        
+        regex_ip = r"\b[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}\b"
+        for element in dflt_gw:
+            if re.search(regex_ip, element) != None:
+                temp_ip = re.findall(regex_ip, element)
+                gw_ip = temp_ip[0]
     
     print(f"[*] Your gateway is {gw_ip}")
     for ip, mac in arp_table.items():
