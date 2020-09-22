@@ -8,3 +8,5 @@ This script was for learning purposes as it is easy to check if you're spoofed m
 
 Since you can't do anything from the OS side to stop and/or prevent the attack, 
 this script will only perform some scans. 
+
+It's working on Linux and Windows
